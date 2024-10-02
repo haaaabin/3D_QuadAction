@@ -44,6 +44,7 @@ public class Player : MonoBehaviour
     bool isJump;
     bool isDodge;
     bool isFireReady = true;   //공격 준비
+    bool isBorder; //벽 충돌 플래그
 
     Vector3 moveVec;
     Vector3 dodgeVec;
@@ -65,6 +66,7 @@ public class Player : MonoBehaviour
 
     void Update()
     {
+       GetInput();  
        Attack();
        Reload();
        Dodge();
@@ -74,7 +76,8 @@ public class Player : MonoBehaviour
 
     void FixedUpdate() 
     {
-       GetInput();    
+       FixedRotation();
+       StopToWall();
        Move();
        Turn();
        Jump();
@@ -107,7 +110,9 @@ public class Player : MonoBehaviour
         if(isSwap || isReload || !isFireReady)
             moveVec = Vector3.zero;
 
-        transform.position += moveVec * speed * (wDown ? 0.3f : 1f) * Time.deltaTime;
+        // 벽에 충돌하면 이동 제한
+        if(!isBorder)
+            transform.position += moveVec * speed * (wDown ? 0.3f : 1f) * Time.deltaTime;
         
         anim.SetBool("isRun", moveVec != Vector3.zero);
         anim.SetBool("isWalk", wDown);
@@ -249,7 +254,19 @@ public class Player : MonoBehaviour
             }
         }
     }
+
+    void FixedRotation()
+    {
+        // 물리 회전 속도를 0으로 지정하면 스스로 돌지 않게 됨.
+        rigid.angularVelocity = Vector3.zero;
+    }
     
+    void StopToWall()
+    {
+        Debug.DrawRay(transform.position, transform.forward * 2.5f, Color.green);        
+        isBorder = Physics.Raycast(transform.position, transform.forward, 2.5f, LayerMask.GetMask("Wall")); 
+    }
+
     void OnCollisionEnter(Collision other) 
     {
         if(other.gameObject.tag == "Floor")
