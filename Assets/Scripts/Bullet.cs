@@ -12,9 +12,13 @@ public class Bullet : MonoBehaviour
         {
             Destroy(gameObject, 3);
         }
-        else if(other.gameObject.tag == "Wall")
+    }
+
+    void OnTriggerEnter(Collider other) 
+    {
+        if(other.gameObject.tag == "Wall")
         {
             Destroy(gameObject);
-        }
+        }    
     }
 }
