@@ -10,6 +10,7 @@ public class Player : MonoBehaviour
     public GameObject[] weapon;
     public bool[] hasWeapon;
     public GameObject[] grenades;
+    public GameObject grenadeObj;
     public int hasGrenades;
 
     public Camera followCamera;
@@ -32,6 +33,7 @@ public class Player : MonoBehaviour
     bool jDown;
     bool fDown;
     bool rDown;
+    bool gDown;
 
 
     bool iDown;
@@ -68,6 +70,7 @@ public class Player : MonoBehaviour
     {
        GetInput();  
        Attack();
+       Grenade();
        Reload();
        Dodge();
        Swap();
@@ -90,6 +93,7 @@ public class Player : MonoBehaviour
         wDown = Input.GetButton("Walk");
         jDown = Input.GetButtonDown("Jump");
         fDown = Input.GetButton("Fire1");
+        gDown = Input.GetButton("Fire2");
         rDown = Input.GetButtonDown("Reload");
         iDown = Input.GetButtonDown("Interation");
         sDown1 = Input.GetButtonDown("Swap1");
@@ -116,6 +120,7 @@ public class Player : MonoBehaviour
         
         anim.SetBool("isRun", moveVec != Vector3.zero);
         anim.SetBool("isWalk", wDown);
+
     }
 
     void Turn()
@@ -161,6 +166,29 @@ public class Player : MonoBehaviour
             equipWeapon.Use();
             anim.SetTrigger(equipWeapon.type == Weapon.Type.Melee ? "doSwing" : "doShot");
             fireDelay = 0;
+        }
+    }
+    
+    void Grenade()
+    {
+        if (hasGrenades == 0) return;
+        if (gDown && !isReload && !isSwap)
+        {
+            Ray ray = UnityEngine.Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit rayHit;
+            if(Physics.Raycast(ray, out rayHit, 100)) //out : return 처럼 반환값을 주어진 변수에 저장하는 키워드
+            {
+                Vector3 nextVec = rayHit.point - transform.position;
+                nextVec.y = 10; //RayCastHit의 높이는 무시하도록 Y축값을 0으로 초기화
+
+                GameObject instantGrenade = Instantiate(grenadeObj, transform.position, transform.rotation);
+                Rigidbody rigidGrenade = instantGrenade.GetComponent<Rigidbody>();
+                rigidGrenade.AddForce(nextVec, ForceMode.Impulse);
+                rigidGrenade.AddTorque(Vector3.back * 10, ForceMode.Impulse);
+
+                hasGrenades--;
+                grenades[hasGrenades].SetActive(false);
+            }
         }
     }
     
