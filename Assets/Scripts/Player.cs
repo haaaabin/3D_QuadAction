@@ -14,7 +14,7 @@ public class Player : MonoBehaviour
     public int hasGrenades;
 
     public Camera followCamera;
-    
+
 
     public int ammo;
     public int coin;
@@ -47,49 +47,51 @@ public class Player : MonoBehaviour
     bool isDodge;
     bool isFireReady = true;   //공격 준비
     bool isBorder; //벽 충돌 플래그
+    bool isDamage; //무적타임
 
     Vector3 moveVec;
     Vector3 dodgeVec;
 
     Rigidbody rigid;
     Animator anim;
-
+    MeshRenderer[] meshRenderers;
     GameObject nearObject;  //트리거 된 아이템을 저장하기 위한 변수
     Weapon equipWeapon; //기존에 장착된 무기를 저장하는 변수
     int equipWeaponIndex = -1;
     float fireDelay; // 공격 딜레이
-    
-    void Awake() 
+
+    void Awake()
     {
         rigid = GetComponent<Rigidbody>();
-        anim = GetComponentInChildren<Animator>();  
-        originalSpeed = speed;  
+        anim = GetComponentInChildren<Animator>();
+        meshRenderers = GetComponentsInChildren<MeshRenderer>();
+        originalSpeed = speed;
     }
 
     void Update()
     {
-       GetInput();  
-       Attack();
-       Grenade();
-       Reload();
-       Dodge();
-       Swap();
-       Interation();
+        GetInput();
+        Attack();
+        Grenade();
+        Reload();
+        Dodge();
+        Swap();
+        Interation();
     }
 
-    void FixedUpdate() 
+    void FixedUpdate()
     {
-       FixedRotation();
-       StopToWall();
-       Move();
-       Turn();
-       Jump();
+        FixedRotation();
+        StopToWall();
+        Move();
+        Turn();
+        Jump();
     }
 
     void GetInput()
     {
         hAxis = Input.GetAxisRaw("Horizontal");
-        vAxis = Input.GetAxisRaw("Vertical");   
+        vAxis = Input.GetAxisRaw("Vertical");
         wDown = Input.GetButton("Walk");
         jDown = Input.GetButtonDown("Jump");
         fDown = Input.GetButton("Fire1");
@@ -104,20 +106,20 @@ public class Player : MonoBehaviour
 
     void Move()
     {
-        moveVec = new Vector3(hAxis,0,vAxis).normalized;
-        
+        moveVec = new Vector3(hAxis, 0, vAxis).normalized;
+
         // 회피 중에는 움직임 벡터 -> 회피 방향 벡터로 바뀌도록 구현
-        if(isDodge)
+        if (isDodge)
             moveVec = dodgeVec;
 
         // 무기 교체, 공격 중에는 움직이지 않도록
-        if(isSwap || isReload || !isFireReady)
+        if (isSwap || isReload || !isFireReady)
             moveVec = Vector3.zero;
 
         // 벽에 충돌하면 이동 제한
-        if(!isBorder)
+        if (!isBorder)
             transform.position += moveVec * speed * (wDown ? 0.3f : 1f) * Time.deltaTime;
-        
+
         anim.SetBool("isRun", moveVec != Vector3.zero);
         anim.SetBool("isWalk", wDown);
 
@@ -129,11 +131,11 @@ public class Player : MonoBehaviour
         transform.LookAt(transform.position + moveVec);
 
         // 마우스에 의한 회전
-        if(fDown)
+        if (fDown)
         {
             Ray ray = UnityEngine.Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit rayHit;
-            if(Physics.Raycast(ray, out rayHit, 100)) //out : return 처럼 반환값을 주어진 변수에 저장하는 키워드
+            if (Physics.Raycast(ray, out rayHit, 100)) //out : return 처럼 반환값을 주어진 변수에 저장하는 키워드
             {
                 Vector3 nextVec = rayHit.point - transform.position;
                 nextVec.y = 0; //RayCastHit의 높이는 무시하도록 Y축값을 0으로 초기화
@@ -144,10 +146,10 @@ public class Player : MonoBehaviour
 
     void Jump()
     {
-        if(jDown && moveVec == Vector3.zero && !isJump && !isDodge && !isSwap)
+        if (jDown && moveVec == Vector3.zero && !isJump && !isDodge && !isSwap)
         {
             rigid.AddForce(Vector3.up * 20, ForceMode.Impulse);
-            anim.SetBool("isJump",true);
+            anim.SetBool("isJump", true);
             anim.SetTrigger("doJump");
             isJump = true;
         }
@@ -155,20 +157,20 @@ public class Player : MonoBehaviour
 
     void Attack()
     {
-        if(equipWeapon == null)
+        if (equipWeapon == null)
             return;
-        
+
         fireDelay += Time.deltaTime;
         isFireReady = equipWeapon.rate < fireDelay;
 
-        if(fDown && isFireReady && !isDodge && !isSwap)
+        if (fDown && isFireReady && !isDodge && !isSwap)
         {
             equipWeapon.Use();
             anim.SetTrigger(equipWeapon.type == Weapon.Type.Melee ? "doSwing" : "doShot");
             fireDelay = 0;
         }
     }
-    
+
     void Grenade()
     {
         if (hasGrenades == 0) return;
@@ -176,7 +178,7 @@ public class Player : MonoBehaviour
         {
             Ray ray = UnityEngine.Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit rayHit;
-            if(Physics.Raycast(ray, out rayHit, 100)) //out : return 처럼 반환값을 주어진 변수에 저장하는 키워드
+            if (Physics.Raycast(ray, out rayHit, 100)) //out : return 처럼 반환값을 주어진 변수에 저장하는 키워드
             {
                 Vector3 nextVec = rayHit.point - transform.position;
                 nextVec.y = 10; //RayCastHit의 높이는 무시하도록 Y축값을 0으로 초기화
@@ -191,13 +193,13 @@ public class Player : MonoBehaviour
             }
         }
     }
-    
+
     void Reload()
     {
-        if(equipWeapon == null || equipWeapon.type == Weapon.Type.Melee || ammo == 0)
+        if (equipWeapon == null || equipWeapon.type == Weapon.Type.Melee || ammo == 0)
             return;
-        
-        if(rDown && !isJump && !isDodge && !isSwap && isFireReady)
+
+        if (rDown && !isJump && !isDodge && !isSwap && isFireReady)
         {
             anim.SetTrigger("doReload");
             isReload = true;
@@ -217,7 +219,7 @@ public class Player : MonoBehaviour
 
     void Dodge()
     {
-        if(jDown && moveVec != Vector3.zero && !isJump && !isDodge && !isSwap)
+        if (jDown && moveVec != Vector3.zero && !isJump && !isDodge && !isSwap)
         {
             dodgeVec = moveVec;
             speed = originalSpeed * 2;
@@ -243,13 +245,13 @@ public class Player : MonoBehaviour
         else if (sDown3) weaponIndex = 2;
 
         // 없는 무기나 이미 장착한 무기인 경우 스왑하지 않도록
-        if(weaponIndex == -1 || !hasWeapon[weaponIndex] || equipWeaponIndex == weaponIndex)
+        if (weaponIndex == -1 || !hasWeapon[weaponIndex] || equipWeaponIndex == weaponIndex)
             return;
 
-        if(!isJump && !isDodge)
+        if (!isJump && !isDodge)
         {
             // 현재 장착한 무기가 있으면 비활성화
-            if(equipWeapon != null)
+            if (equipWeapon != null)
                 equipWeapon.gameObject.SetActive(false);
 
             equipWeaponIndex = weaponIndex;
@@ -270,11 +272,11 @@ public class Player : MonoBehaviour
 
     void Interation()
     {
-        if(iDown && nearObject != null && !isJump && !isDodge)
+        if (iDown && nearObject != null && !isJump && !isDodge)
         {
-            if(nearObject.tag == "Weapon")
+            if (nearObject.tag == "Weapon")
             {
-                Item item  = nearObject.GetComponent<Item>();
+                Item item = nearObject.GetComponent<Item>();
                 int weaponIndex = item.value;
                 hasWeapon[weaponIndex] = true;
 
@@ -288,66 +290,105 @@ public class Player : MonoBehaviour
         // 물리 회전 속도를 0으로 지정하면 스스로 돌지 않게 됨.
         rigid.angularVelocity = Vector3.zero;
     }
-    
+
     void StopToWall()
     {
-        Debug.DrawRay(transform.position, transform.forward * 2.5f, Color.green);        
-        isBorder = Physics.Raycast(transform.position, transform.forward, 2.5f, LayerMask.GetMask("Wall")); 
+        Debug.DrawRay(transform.position, transform.forward * 2.5f, Color.green);
+        isBorder = Physics.Raycast(transform.position, transform.forward, 2.5f, LayerMask.GetMask("Wall"));
     }
 
-    void OnCollisionEnter(Collision other) 
+    
+
+    void OnCollisionEnter(Collision other)
     {
-        if(other.gameObject.tag == "Floor")
+        if (other.gameObject.tag == "Floor")
         {
-            anim.SetBool("isJump",false);
-            isJump  = false;
+            anim.SetBool("isJump", false);
+            isJump = false;
         }
     }
 
-    void OnTriggerEnter(Collider other) 
+    void OnTriggerEnter(Collider other)
     {
-        if(other.tag == "Item")
+        if (other.tag == "Item")
         {
             Item item = other.GetComponent<Item>();
-            switch(item.itemType)
+            switch (item.itemType)
             {
                 case Item.Type.Ammo:
                     ammo += item.value;
-                    if(ammo > maxAmmo)
+                    if (ammo > maxAmmo)
                         ammo = maxAmmo;
                     break;
                 case Item.Type.Coin:
                     coin += item.value;
-                    if(coin > maxCoin)
+                    if (coin > maxCoin)
                         coin = maxCoin;
                     break;
                 case Item.Type.Heart:
                     health += item.value;
-                    if(health > maxHealth)
+                    if (health > maxHealth)
                         health = maxHealth;
                     break;
                 case Item.Type.Grenade:
                     grenades[hasGrenades].SetActive(true);
                     hasGrenades += item.value;
-                    if(hasGrenades > maxHasGrenades)
+                    if (hasGrenades > maxHasGrenades)
                         hasGrenades = maxHasGrenades;
                     break;
             }
             Destroy(other.gameObject);
         }
+        else if (other.tag == "EnemyBullet")
+        {
+            if (!isDamage) //무적 타임이 아닐 때만 공격 받게끔
+            {
+                Bullet enemyBullet = other.GetComponent<Bullet>();
+                health -= enemyBullet.damage;
+
+                bool isBossAttack = other.name == "Boss Melee Area";
+                StartCoroutine(OnDamage(isBossAttack));
+            }
+            if (other.GetComponent<Rigidbody>() != null)
+                Destroy(other.gameObject);
+        }
     }
 
-    private void OnTriggerStay(Collider other) 
+    // Damage 리액션
+    IEnumerator OnDamage(bool isBossAttack)
     {
-        if(other.tag == "Weapon")
+        isDamage = true;    // 무적 타임
+        SetMeshesColor(Color.yellow);
+
+        // 넉백
+        if (isBossAttack)
+            rigid.AddForce(transform.forward * -25, ForceMode.Impulse);
+
+        yield return new WaitForSeconds(1f);
+
+        isDamage = false;
+        SetMeshesColor(Color.white);
+
+        if (isBossAttack)
+            rigid.velocity = Vector3.zero;
+    }
+
+    // 모든 재질의 색상 변경
+    void SetMeshesColor(Color color)
+    {
+        foreach (var mesh in meshRenderers)
+            mesh.material.color = color;
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        if (other.tag == "Weapon")
             nearObject = other.gameObject;
-        
-        //Debug.Log(nearObject.name);
     }
 
-    private void OnTriggerExit(Collider other) 
+    private void OnTriggerExit(Collider other)
     {
-        if(other.tag == "Weapon")
+        if (other.tag == "Weapon")
             nearObject = null;
     }
 }
