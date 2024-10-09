@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Net.Http.Headers;
 using TreeEditor;
 using Unity.VisualScripting;
+using UnityEditor.UI;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -12,9 +14,14 @@ public class Enemy : MonoBehaviour
 
     public int maxHealth;
     public int curHealth;
+    public int score;
+
+    public GameManager gameManager;
     public Transform target;
     public BoxCollider meleeArea; // 근접 공격 범위
     public GameObject bullet;
+    public GameObject[] coins;
+
     public bool isChase;
     public bool isAttack;
     public bool isDead;
@@ -213,6 +220,27 @@ public class Enemy : MonoBehaviour
         nav.enabled = false;
         anim.SetTrigger("doDie");
 
+        Player player = target.GetComponent<Player>();
+        player.score += score;
+        int ranCoin = Random.Range(0, 3);
+        Instantiate(coins[ranCoin], transform.position, Quaternion.identity);
+
+        switch(enemyType)
+        {
+            case Type.A:
+                gameManager.enemyCntA--;
+                break;
+            case Type.B:
+                gameManager.enemyCntB--;
+                break;
+            case Type.C:
+                gameManager.enemyCntC--;
+                break;
+            case Type.D:
+                gameManager.enemyCntD--;
+                break;
+        }
+
         // 수류탄에 의한 사망 리액션 처리
         reactVec = reactVec.normalized;
         reactVec += isGrenade ? Vector3.up * 3 : Vector3.up;
@@ -223,7 +251,6 @@ public class Enemy : MonoBehaviour
         if (isGrenade)
             rigid.AddTorque(reactVec * 15, ForceMode.Impulse);
 
-        if (enemyType != Type.D)
-            Destroy(gameObject, 4);
+        Destroy(gameObject, 4);
     }
 }

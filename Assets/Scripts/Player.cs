@@ -1,7 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
-using Unity.VisualScripting;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class Player : MonoBehaviour
@@ -12,13 +9,14 @@ public class Player : MonoBehaviour
     public GameObject[] grenades;
     public GameObject grenadeObj;
     public int hasGrenades;
-
     public Camera followCamera;
+    public GameManager manager;
 
 
     public int ammo;
     public int coin;
     public int health;
+    public int score;
 
     public int maxAmmo;
     public int maxCoin;
@@ -48,6 +46,8 @@ public class Player : MonoBehaviour
     bool isFireReady = true;   //공격 준비
     bool isBorder; //벽 충돌 플래그
     bool isDamage; //무적타임
+    bool isShop;
+    bool isDead;
 
     Vector3 moveVec;
     Vector3 dodgeVec;
@@ -56,7 +56,7 @@ public class Player : MonoBehaviour
     Animator anim;
     MeshRenderer[] meshRenderers;
     GameObject nearObject;  //트리거 된 아이템을 저장하기 위한 변수
-    Weapon equipWeapon; //기존에 장착된 무기를 저장하는 변수
+    public Weapon equipWeapon; //기존에 장착된 무기를 저장하는 변수
     int equipWeaponIndex = -1;
     float fireDelay; // 공격 딜레이
 
@@ -66,6 +66,8 @@ public class Player : MonoBehaviour
         anim = GetComponentInChildren<Animator>();
         meshRenderers = GetComponentsInChildren<MeshRenderer>();
         originalSpeed = speed;
+
+        //PlayerPrefs.SetInt("MaxScore", 112500);
     }
 
     void Update()
@@ -113,7 +115,7 @@ public class Player : MonoBehaviour
             moveVec = dodgeVec;
 
         // 무기 교체, 공격 중에는 움직이지 않도록
-        if (isSwap || isReload || !isFireReady)
+        if (isSwap || isReload || !isFireReady || isDead)
             moveVec = Vector3.zero;
 
         // 벽에 충돌하면 이동 제한
@@ -131,7 +133,7 @@ public class Player : MonoBehaviour
         transform.LookAt(transform.position + moveVec);
 
         // 마우스에 의한 회전
-        if (fDown)
+        if (fDown && !isDead)
         {
             Ray ray = UnityEngine.Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit rayHit;
@@ -146,7 +148,7 @@ public class Player : MonoBehaviour
 
     void Jump()
     {
-        if (jDown && moveVec == Vector3.zero && !isJump && !isDodge && !isSwap)
+        if (jDown && moveVec == Vector3.zero && !isJump && !isDodge && !isSwap && !isDead)
         {
             rigid.AddForce(Vector3.up * 20, ForceMode.Impulse);
             anim.SetBool("isJump", true);
@@ -163,7 +165,7 @@ public class Player : MonoBehaviour
         fireDelay += Time.deltaTime;
         isFireReady = equipWeapon.rate < fireDelay;
 
-        if (fDown && isFireReady && !isDodge && !isSwap)
+        if (fDown && isFireReady && !isDodge && !isSwap && !isShop && !isDead)
         {
             equipWeapon.Use();
             anim.SetTrigger(equipWeapon.type == Weapon.Type.Melee ? "doSwing" : "doShot");
@@ -174,7 +176,7 @@ public class Player : MonoBehaviour
     void Grenade()
     {
         if (hasGrenades == 0) return;
-        if (gDown && !isReload && !isSwap)
+        if (gDown && !isReload && !isSwap && !isDead)
         {
             Ray ray = UnityEngine.Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit rayHit;
@@ -282,6 +284,12 @@ public class Player : MonoBehaviour
 
                 Destroy(nearObject);
             }
+            else if (nearObject.tag == "Shop")
+            {
+                isShop = true;
+                Shop shop = nearObject.GetComponent<Shop>();
+                shop.Enter(this);   //자기 자신에 접근할 때는 this 키워드 사용
+            }
         }
     }
 
@@ -297,7 +305,7 @@ public class Player : MonoBehaviour
         isBorder = Physics.Raycast(transform.position, transform.forward, 2.5f, LayerMask.GetMask("Wall"));
     }
 
-    
+
 
     void OnCollisionEnter(Collision other)
     {
@@ -345,6 +353,7 @@ public class Player : MonoBehaviour
             {
                 Bullet enemyBullet = other.GetComponent<Bullet>();
                 health -= enemyBullet.damage;
+                if (health <= 0) health = 0;
 
                 bool isBossAttack = other.name == "Boss Melee Area";
                 StartCoroutine(OnDamage(isBossAttack));
@@ -364,6 +373,11 @@ public class Player : MonoBehaviour
         if (isBossAttack)
             rigid.AddForce(transform.forward * -25, ForceMode.Impulse);
 
+        if (health <= 0 && !isDead)
+        {
+            OnDie();
+        }
+
         yield return new WaitForSeconds(1f);
 
         isDamage = false;
@@ -371,6 +385,13 @@ public class Player : MonoBehaviour
 
         if (isBossAttack)
             rigid.velocity = Vector3.zero;
+    }
+
+    void OnDie()
+    {
+        anim.SetTrigger("doDie");
+        isDead = true;
+        manager.GameOver();
     }
 
     // 모든 재질의 색상 변경
@@ -382,7 +403,7 @@ public class Player : MonoBehaviour
 
     private void OnTriggerStay(Collider other)
     {
-        if (other.tag == "Weapon")
+        if (other.tag == "Weapon" || other.tag == "Shop")
             nearObject = other.gameObject;
     }
 
@@ -390,5 +411,12 @@ public class Player : MonoBehaviour
     {
         if (other.tag == "Weapon")
             nearObject = null;
+        else if (other.tag == "Shop")
+        {
+            Shop shop = nearObject.GetComponent<Shop>();
+            shop.Exit();
+            isShop = false;
+            nearObject = null;
+        }
     }
 }
